@@ -1,6 +1,6 @@
 ---
 title: "Posts List"
-layout: categories
+layout: single
 permalink: /categories/
 author_profile: true
 ---
