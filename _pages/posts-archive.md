@@ -1,6 +1,6 @@
 ---
 title: "Posts List"
 layout: single
-permalink: /categories/
+permalink: /posts/
 author_profile: true
 ---
