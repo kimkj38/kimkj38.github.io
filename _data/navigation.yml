@@ -2,6 +2,8 @@
 main:
   - title: "Categories"
     url: https://kimkj38.github.io/categories/
+  - title: "논문"
+    url: /categories/논문/
   - title: "Posts"
     url: https://kimkj38.github.io/posts/
   - title: "Tags"
