@@ -1,0 +1,994 @@
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from nltk.corpus import stopwords
+plt.style.use('ggplot')
+stop=set(stopwords.words('english'))
+import re
+from nltk.tokenize import word_tokenize
+import string
+from tqdm import tqdm
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from sklearn.model_selection import train_test_split
+import wordcloud
+import spacy
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from nltk.stem import WordNetLemmatizer
+import nltk
+nltk.download('wordnet')
+from nltk.corpus import stopwords, wordnet
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+```
+
+    [nltk_data] Downloading package wordnet to /usr/share/nltk_data...
+    [nltk_data]   Package wordnet is already up-to-date!
+
+
+
+```python
+import tensorflow as tf
+tf.test.gpu_device_name()
+```
+
+
+
+
+    '/device:GPU:0'
+
+
+
+# EDA
+
+
+```python
+df_train = pd.read_csv('../input/fakenews/fake-news/train.csv')
+df_test = pd.read_csv('../input/fakenews/fake-news/test.csv')
+display(df_train.sample(10))
+```
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>title</th>
+      <th>author</th>
+      <th>text</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>20236</th>
+      <td>20236</td>
+      <td>Rand Paul on Unmaskings: ’We Can’t Live in Fea...</td>
+      <td>Pam Key</td>
+      <td>Tuesday on Fox News Channel’s “Fox  Friends,” ...</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3923</th>
+      <td>3923</td>
+      <td>Ballot stuffing by fat obese feminazis</td>
+      <td>Anonymous Coward (UID 73270620)</td>
+      <td>Ballot stuffing by fat obese feminazis Caught ...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>6415</th>
+      <td>6415</td>
+      <td>Man Wearing ‘Jewmerica’ T-Shirt Never Dreamed ...</td>
+      <td>NaN</td>
+      <td>Man Wearing ‘Jewmerica’ T-Shirt Never Dreamed ...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>19112</th>
+      <td>19112</td>
+      <td>Erdogan Checks in with Obama Before Bombing Syria</td>
+      <td>NaN</td>
+      <td>Erdogan Checks in with Obama Before Bombing Sy...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>15766</th>
+      <td>15766</td>
+      <td>Assad: US waging proxy war in Syria against Ru...</td>
+      <td>Alex Ansary</td>
+      <td>Assad: US waging proxy war in Syria against Ru...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>5725</th>
+      <td>5725</td>
+      <td>Election crossroads: Socialism or capitalism?</td>
+      <td>Jane Chastain</td>
+      <td>Election crossroads: Socialism or capitalism? ...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>11300</th>
+      <td>11300</td>
+      <td>Rebels Escalate Attacks on Western Aleppo, Kil...</td>
+      <td>Jason Ditz</td>
+      <td>Attacks Ramp Up Ahead of Russia's New Ceasefir...</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>1947</th>
+      <td>1947</td>
+      <td>House Republicans, Under Fire, Back Down on Gu...</td>
+      <td>Eric Lipton and Matt Flegenheimer</td>
+      <td>WASHINGTON  —   It was supposed to be a triump...</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>6602</th>
+      <td>6602</td>
+      <td>Obama Writes Feminist Essay in Glamour - The N...</td>
+      <td>Daniel Victor</td>
+      <td>In his most extensive remarks about feminism, ...</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4807</th>
+      <td>4807</td>
+      <td>Donald J. Trump’s 10 Point Plan to Put America...</td>
+      <td>Anonymous</td>
+      <td>Tweet Widget by Tanya Golash-Boza \nHow will D...</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+```python
+# label데이터 balance 확인 
+x = df_train['label'].value_counts()
+plt.pie(x, labels=["Real News", "Fake News"], autopct='%1.1f%%',
+       shadow=True, explode=(0.05, 0))
+```
+
+
+
+
+    ([<matplotlib.patches.Wedge at 0x7feb302d6890>,
+      <matplotlib.patches.Wedge at 0x7feb302e86d0>],
+     [Text(-0.002258069950742198, 1.149997783093558, 'Real News'),
+      Text(0.0021598929963617232, -1.0999978794807945, 'Fake News')],
+     [Text(-0.0012763004069412422, 0.649998746965924, '50.1%'),
+      Text(0.0011781234525609398, -0.5999988433531606, '49.9%')])
+
+
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_4_1.png)
+    
+
+
+
+```python
+#결측치 확인
+df_train.isnull().sum()
+```
+
+
+
+
+    id           0
+    title      558
+    author    1957
+    text        39
+    label        0
+    dtype: int64
+
+
+
+
+```python
+df_train = df_train.fillna('')
+df_test = df_train.fillna('')
+```
+
+
+```python
+author_df = df_train.groupby('author')['label'].agg(['count','sum'])
+author_df['fake proportion'] = round(author_df['sum']/author_df['count']*100,2)
+display(author_df.sample(10))
+author_df.shape
+```
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>count</th>
+      <th>sum</th>
+      <th>fake proportion</th>
+    </tr>
+    <tr>
+      <th>author</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>El Presidente</th>
+      <td>1</td>
+      <td>1</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>Ignatius</th>
+      <td>1</td>
+      <td>1</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>Eli Rosenberg, Jennifer Medina and John Eligon</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>James DeVinne</th>
+      <td>6</td>
+      <td>6</td>
+      <td>100.0</td>
+    </tr>
+    <tr>
+      <th>Helene Cooper and Eric Schmitt</th>
+      <td>3</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Richard Fausset, Campbell Robertson and Nikole Hannah-Jones</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Michael R. Gordon and Tim Arango</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Chris Stein</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Charlie Savage and Scott Shane</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Rachel Abrams and Annalyn Kurtz</th>
+      <td>1</td>
+      <td>0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+
+    (4202, 3)
+
+
+
+
+```python
+sns.countplot('fake proportion', data=author_df)
+
+```
+
+
+
+
+    <AxesSubplot:xlabel='fake proportion', ylabel='count'>
+
+
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_8_1.png)
+    
+
+
+
+```python
+author_df[(author_df['fake proportion']<100) &(author_df['fake proportion']>0)]
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>count</th>
+      <th>sum</th>
+      <th>fake proportion</th>
+    </tr>
+    <tr>
+      <th>author</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th></th>
+      <td>1957</td>
+      <td>1931</td>
+      <td>98.67</td>
+    </tr>
+    <tr>
+      <th>AFP</th>
+      <td>3</td>
+      <td>1</td>
+      <td>33.33</td>
+    </tr>
+    <tr>
+      <th>Ann Coulter</th>
+      <td>21</td>
+      <td>5</td>
+      <td>23.81</td>
+    </tr>
+    <tr>
+      <th>Pam Key</th>
+      <td>243</td>
+      <td>1</td>
+      <td>0.41</td>
+    </tr>
+    <tr>
+      <th>Pamela Geller</th>
+      <td>5</td>
+      <td>4</td>
+      <td>80.00</td>
+    </tr>
+    <tr>
+      <th>Reuters</th>
+      <td>6</td>
+      <td>2</td>
+      <td>33.33</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+df_train['total'] = df_train['title']+' '+df_train['author']+' '+df_train['text']
+df_test['total'] = df_test['title']+' '+df_test['author']+' '+df_test['text']
+```
+
+
+```python
+fig,ax = plt.subplots(1,2,figsize=(15,5))
+news_len = df_train[df_train['label']==1]['text'].str.len()
+sns.distplot(news_len,color='green',bins=50,ax=ax[0])
+ax[0].set_title('Fake news')
+ax[0].set_xlim([0,50000])
+
+news_len = df_train[df_train['label']==0]['text'].str.len()
+sns.distplot(news_len,color='red',bins=50,ax=ax[1])
+ax[1].set_title('real news')
+ax[1].set_xlim([0,50000])
+
+fig.suptitle('Characters in news')
+plt.show()
+```
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_11_0.png)
+    
+
+
+
+```python
+fig,ax =plt.subplots(1,2,figsize=(15,5))
+news_len = df_train[df_train['label']==1]['text'].str.split().map(lambda x: len(x))
+sns.distplot(news_len,color='green',bins=50,ax=ax[0])
+ax[0].set_title('Fake news')
+ax[0].set_xlim([0,10000])
+
+news_len = df_train[df_train['label']==0]['text'].str.split().map(lambda x: len(x))
+sns.distplot(news_len,color='red',bins=50,ax=ax[1])
+ax[1].set_title('real news')
+ax[1].set_xlim([0,10000])
+
+fig.suptitle('Words in news')
+plt.show()
+```
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_12_0.png)
+    
+
+
+# Data Cleaning
+
+
+```python
+def cleanup_text(text):
+    text = text.lower()
+    text = re.sub('\[.*?\]', '', text)
+    text = re.sub('https?://\S+|www\.\S+', '', text)
+    text = re.sub('<.*?>+', '', text)
+    text = re.sub('[%s]' % re.escape(string.punctuation), '', text)
+    text = re.sub('\n', '', text)
+    text = re.sub('\w*\d\w*', '', text)
+    return text
+df_train['total'] = df_train['total'] .apply(lambda x: cleanup_text(x))
+df_train['total'] = [word.split() for word in df_train['total']]
+```
+
+
+```python
+#remove stopwords
+df_train['stopwords_removed'] = df_train['total'].apply(lambda x: [word for word in x if word not in stop])
+```
+
+### lemmatizing
+
+
+```python
+df_train['pos_tags_text'] = df_train['stopwords_removed'].apply(nltk.tag.pos_tag)
+df_train.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>title</th>
+      <th>author</th>
+      <th>text</th>
+      <th>label</th>
+      <th>total</th>
+      <th>stopwords_removed</th>
+      <th>pos_tags_text</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>House Dem Aide: We Didn’t Even See Comey’s Let...</td>
+      <td>Darrell Lucus</td>
+      <td>House Dem Aide: We Didn’t Even See Comey’s Let...</td>
+      <td>1</td>
+      <td>[house, dem, aide, we, didn’t, even, see, come...</td>
+      <td>[house, dem, aide, didn’t, even, see, comey’s,...</td>
+      <td>[(house, NN), (dem, NN), (aide, IN), (didn’t, ...</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>FLYNN: Hillary Clinton, Big Woman on Campus - ...</td>
+      <td>Daniel J. Flynn</td>
+      <td>Ever get the feeling your life circles the rou...</td>
+      <td>0</td>
+      <td>[flynn, hillary, clinton, big, woman, on, camp...</td>
+      <td>[flynn, hillary, clinton, big, woman, campus, ...</td>
+      <td>[(flynn, JJ), (hillary, JJ), (clinton, NN), (b...</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>Why the Truth Might Get You Fired</td>
+      <td>Consortiumnews.com</td>
+      <td>Why the Truth Might Get You Fired October 29, ...</td>
+      <td>1</td>
+      <td>[why, the, truth, might, get, you, fired, cons...</td>
+      <td>[truth, might, get, fired, consortiumnewscom, ...</td>
+      <td>[(truth, NN), (might, MD), (get, VB), (fired, ...</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>15 Civilians Killed In Single US Airstrike Hav...</td>
+      <td>Jessica Purkiss</td>
+      <td>Videos 15 Civilians Killed In Single US Airstr...</td>
+      <td>1</td>
+      <td>[civilians, killed, in, single, us, airstrike,...</td>
+      <td>[civilians, killed, single, us, airstrike, ide...</td>
+      <td>[(civilians, NNS), (killed, VBN), (single, JJ)...</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>Iranian woman jailed for fictional unpublished...</td>
+      <td>Howard Portnoy</td>
+      <td>Print \nAn Iranian woman has been sentenced to...</td>
+      <td>1</td>
+      <td>[iranian, woman, jailed, for, fictional, unpub...</td>
+      <td>[iranian, woman, jailed, fictional, unpublishe...</td>
+      <td>[(iranian, JJ), (woman, NN), (jailed, VBD), (f...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+def get_wordnet_pos(tag):
+    if tag.startswith('J'):
+        return wordnet.ADJ
+    elif tag.startswith('V'):
+        return wordnet.VERB
+    elif tag.startswith('N'):
+        return wordnet.NOUN
+    elif tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
+
+
+df_train['wordnet_pos_text'] = df_train['pos_tags_text'].apply(
+    lambda x: [(word, get_wordnet_pos(pos_tag)) for (word, pos_tag) in x])
+df_train.head()
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>title</th>
+      <th>author</th>
+      <th>text</th>
+      <th>label</th>
+      <th>total</th>
+      <th>stopwords_removed</th>
+      <th>pos_tags_text</th>
+      <th>wordnet_pos_text</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>House Dem Aide: We Didn’t Even See Comey’s Let...</td>
+      <td>Darrell Lucus</td>
+      <td>House Dem Aide: We Didn’t Even See Comey’s Let...</td>
+      <td>1</td>
+      <td>[house, dem, aide, we, didn’t, even, see, come...</td>
+      <td>[house, dem, aide, didn’t, even, see, comey’s,...</td>
+      <td>[(house, NN), (dem, NN), (aide, IN), (didn’t, ...</td>
+      <td>[(house, n), (dem, n), (aide, n), (didn’t, n),...</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>FLYNN: Hillary Clinton, Big Woman on Campus - ...</td>
+      <td>Daniel J. Flynn</td>
+      <td>Ever get the feeling your life circles the rou...</td>
+      <td>0</td>
+      <td>[flynn, hillary, clinton, big, woman, on, camp...</td>
+      <td>[flynn, hillary, clinton, big, woman, campus, ...</td>
+      <td>[(flynn, JJ), (hillary, JJ), (clinton, NN), (b...</td>
+      <td>[(flynn, a), (hillary, a), (clinton, n), (big,...</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>Why the Truth Might Get You Fired</td>
+      <td>Consortiumnews.com</td>
+      <td>Why the Truth Might Get You Fired October 29, ...</td>
+      <td>1</td>
+      <td>[why, the, truth, might, get, you, fired, cons...</td>
+      <td>[truth, might, get, fired, consortiumnewscom, ...</td>
+      <td>[(truth, NN), (might, MD), (get, VB), (fired, ...</td>
+      <td>[(truth, n), (might, n), (get, v), (fired, v),...</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>15 Civilians Killed In Single US Airstrike Hav...</td>
+      <td>Jessica Purkiss</td>
+      <td>Videos 15 Civilians Killed In Single US Airstr...</td>
+      <td>1</td>
+      <td>[civilians, killed, in, single, us, airstrike,...</td>
+      <td>[civilians, killed, single, us, airstrike, ide...</td>
+      <td>[(civilians, NNS), (killed, VBN), (single, JJ)...</td>
+      <td>[(civilians, n), (killed, v), (single, a), (us...</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>Iranian woman jailed for fictional unpublished...</td>
+      <td>Howard Portnoy</td>
+      <td>Print \nAn Iranian woman has been sentenced to...</td>
+      <td>1</td>
+      <td>[iranian, woman, jailed, for, fictional, unpub...</td>
+      <td>[iranian, woman, jailed, fictional, unpublishe...</td>
+      <td>[(iranian, JJ), (woman, NN), (jailed, VBD), (f...</td>
+      <td>[(iranian, a), (woman, n), (jailed, v), (ficti...</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+wnl = WordNetLemmatizer()
+df_train['lemma_text'] = df_train['wordnet_pos_text'].apply(lambda x: [wnl.lemmatize(word, tag) for word, tag in x])
+df_train['lemma_str_text'] = [' '.join(map(str, l)) for l in df_train['lemma_text']]
+```
+
+
+```python
+def get_top_news_bigrams(corpus, n=None):
+    vec = CountVectorizer(ngram_range=(2, 2)).fit(corpus)
+    bag_of_words = vec.transform(corpus)
+    sum_words = bag_of_words.sum(axis=0) 
+    words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
+    words_freq =sorted(words_freq, key = lambda x: x[1], reverse=True)
+    return words_freq[:n]
+```
+
+
+```python
+plt.figure(figsize=(16,5))
+top_news_bigrams=get_top_news_bigrams(df_train[df_train['label']==1]['lemma_str_text'])[:10]
+x,y=map(list,zip(*top_news_bigrams))
+sns.barplot(x=y,y=x)
+```
+
+
+
+
+    <AxesSubplot:>
+
+
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_21_1.png)
+    
+
+
+
+```python
+#fake news
+wc = wordcloud.WordCloud(background_color="white", stopwords=wordcloud.STOPWORDS, max_words=500,
+              width=600, height=600, random_state=1)
+wc.generate(" ".join(df_train[df_train['label']==1]['lemma_str_text']))
+plt.figure(figsize=(10,15))
+plt.imshow(wc)
+```
+
+
+
+
+    <matplotlib.image.AxesImage at 0x7fea1a8d2dd0>
+
+
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_22_1.png)
+    
+
+
+
+```python
+#real news
+wc = wordcloud.WordCloud(background_color="white", stopwords=wordcloud.STOPWORDS, max_words=500,
+              width=600, height=600, random_state=1)
+wc.generate(" ".join(df_train[df_train['label']==0]['lemma_str_text']))
+plt.figure(figsize=(10,15))
+plt.imshow(wc)
+```
+
+
+
+
+    <matplotlib.image.AxesImage at 0x7fea1a8eecd0>
+
+
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_23_1.png)
+    
+
+
+# Model
+
+
+```python
+!wget --quiet https://raw.githubusercontent.com/tensorflow/models/master/official/nlp/bert/tokenization.py
+```
+
+
+```python
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import ModelCheckpoint
+import tensorflow_hub as hub
+from sklearn.model_selection import train_test_split
+
+import tokenization
+```
+
+
+```python
+def bert_encode(texts, tokenizer, max_len):
+    all_tokens = []
+    all_masks = []
+    all_segments = []
+    
+    for text in texts:
+        text = tokenizer.tokenize(text)
+            
+        text = text[:max_len-2]
+        input_sequence = ["[CLS]"] + text + ["[SEP]"]
+        pad_len = max_len - len(input_sequence)
+        
+        tokens = tokenizer.convert_tokens_to_ids(input_sequence)
+        tokens += [0] * pad_len
+        pad_masks = [1] * len(input_sequence) + [0] * pad_len
+        segment_ids = [0] * max_len
+        
+        all_tokens.append(tokens)
+        all_masks.append(pad_masks)
+        all_segments.append(segment_ids)
+    
+    return np.array(all_tokens), np.array(all_masks), np.array(all_segments)
+```
+
+
+```python
+def build_model(bert_layer, max_len):
+    input_word_ids = Input(shape=(max_len,), dtype=tf.int32, name="input_word_ids")
+    input_mask = Input(shape=(max_len,), dtype=tf.int32, name="input_mask")
+    segment_ids = Input(shape=(max_len,), dtype=tf.int32, name="segment_ids")
+
+    _, sequence_output = bert_layer([input_word_ids, input_mask, segment_ids])
+    clf_output = sequence_output[:, 0, :]
+    out = Dense(1, activation='sigmoid')(clf_output)
+    
+    model = Model(inputs=[input_word_ids, input_mask, segment_ids], outputs=out)
+    model.compile(Adam(lr=1e-5), loss='binary_crossentropy', metrics=['accuracy'])
+    
+    return model
+```
+
+
+```python
+%%time
+module_url = "https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1"
+bert_layer = hub.KerasLayer(module_url, trainable=True)
+```
+
+    CPU times: user 12.2 s, sys: 1.13 s, total: 13.4 s
+    Wall time: 13.2 s
+
+
+
+```python
+vocab_file = bert_layer.resolved_object.vocab_file.asset_path.numpy()
+do_lower_case = bert_layer.resolved_object.do_lower_case.numpy()
+tokenizer = tokenization.FullTokenizer(vocab_file, do_lower_case)
+```
+
+
+```python
+X_train, X_test, y_train, y_test = train_test_split(
+    df_train['lemma_str_text'], 
+    df_train['label'], 
+    test_size=0.3
+)
+```
+
+
+```python
+train_input = bert_encode(X_train, tokenizer, max_len=160)
+test_input = bert_encode(X_test, tokenizer, max_len=160)
+train_labels = y_train
+```
+
+
+```python
+model = build_model(bert_layer, max_len=160)
+model.summary()
+```
+
+    Model: "model"
+    __________________________________________________________________________________________________
+    Layer (type)                    Output Shape         Param #     Connected to                     
+    ==================================================================================================
+    input_word_ids (InputLayer)     [(None, 160)]        0                                            
+    __________________________________________________________________________________________________
+    input_mask (InputLayer)         [(None, 160)]        0                                            
+    __________________________________________________________________________________________________
+    segment_ids (InputLayer)        [(None, 160)]        0                                            
+    __________________________________________________________________________________________________
+    keras_layer_1 (KerasLayer)      [(None, 1024), (None 335141889   input_word_ids[0][0]             
+                                                                     input_mask[0][0]                 
+                                                                     segment_ids[0][0]                
+    __________________________________________________________________________________________________
+    tf.__operators__.getitem (Slici (None, 1024)         0           keras_layer_1[0][1]              
+    __________________________________________________________________________________________________
+    dense (Dense)                   (None, 1)            1025        tf.__operators__.getitem[0][0]   
+    ==================================================================================================
+    Total params: 335,142,914
+    Trainable params: 335,142,913
+    Non-trainable params: 1
+    __________________________________________________________________________________________________
+
+
+
+```python
+checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', save_best_only=True)
+
+train_history = model.fit(
+    train_input, train_labels,
+    validation_split=0.2,
+    epochs=3,
+    callbacks=[checkpoint],
+    batch_size=16
+)
+```
+
+    Epoch 1/3
+    728/728 [==============================] - 744s 977ms/step - loss: 0.1867 - accuracy: 0.9146 - val_loss: 0.0283 - val_accuracy: 0.9887
+    Epoch 2/3
+    728/728 [==============================] - 708s 973ms/step - loss: 0.0083 - accuracy: 0.9971 - val_loss: 0.0546 - val_accuracy: 0.9842
+    Epoch 3/3
+    693/728 [===========================>..] - ETA: 31s - loss: 0.0073 - accuracy: 0.9979
+
+
+```python
+def plot(history, arr):
+    fig, ax = plt.subplots(1, 2, figsize=(20, 5))
+    for idx in range(2):
+        ax[idx].plot(history.history[arr[idx][0]])
+        ax[idx].plot(history.history[arr[idx][1]])
+        ax[idx].legend([arr[idx][0], arr[idx][1]],fontsize=18)
+        ax[idx].set_xlabel('A ',fontsize=16)
+        ax[idx].set_ylabel('B',fontsize=16)
+        ax[idx].set_title(arr[idx][0] + ' X ' + arr[idx][1],fontsize=16)
+```
+
+
+```python
+plot(train_history, [['loss', 'val_loss'],['accuracy', 'val_accuracy']])
+```
+
+
+    
+![png](nlp-fake-news_files/nlp-fake-news_36_0.png)
+    
+
+
+
+```python
+model.load_weights('model.h5')
+test_pred = model.predict(test_input)
+```
+
+## References
+- https://www.kaggle.com/khanrahim/fake-news-classification-easiest-99-accuracy  
+- https://www.kaggle.com/shahules/basic-eda-cleaning-and-glove
+- https://www.kaggle.com/xhlulu/disaster-nlp-keras-bert-using-tfhub
+
+
+```python
+
+```
