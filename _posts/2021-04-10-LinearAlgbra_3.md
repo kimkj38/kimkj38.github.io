@@ -6,6 +6,7 @@ categories:
 tags:
   - 선형대수
   - 수학
+classes: wide
 typora-copy-images-to: ..\images\2021-04-10
 ---
 
