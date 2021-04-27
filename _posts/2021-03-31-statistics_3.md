@@ -6,6 +6,7 @@ categories:
 tags:
   - 수리통계학
   - 수학
+classes: wide
 typora-copy-images-to: ..\images\2021-03-31
 ---
 
