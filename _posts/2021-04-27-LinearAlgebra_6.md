@@ -25,4 +25,4 @@ typora-copy-images-to: ..\images\2021-04-27
 
 
 ## Reference
-<https://www.youtube.com/watch?v=zddqePfQV9o&list=PL127T2Zu76FuVMq1UQnZv9SG-GFIdZfLg&index=7>7
+<https://www.youtube.com/watch?v=zddqePfQV9o&list=PL127T2Zu76FuVMq1UQnZv9SG-GFIdZfLg&index=7>
