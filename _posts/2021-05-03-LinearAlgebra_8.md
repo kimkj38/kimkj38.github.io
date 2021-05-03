@@ -10,7 +10,7 @@ classes: wide
 typora-copy-images-to: ..\images\2021-05-03
 ---
 
-![](https://kimkj38.github.io/images/2021-05-03/스크린샷 2021-05-03 오후 2.39.34.png)
+![](https://kimkj38.github.io/images/2021-05-03/스크린샷 2021-05-03 오후 2.39.34.png)
 
 ![](https://kimkj38.github.io/images/2021-05-03/스크린샷 2021-05-03 오후 2.39.40.png)
 
